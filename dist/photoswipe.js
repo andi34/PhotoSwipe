@@ -1,7 +1,7 @@
 /*!
- * PhotoSwipe - v4.4.0 - 2020-12-06
+ * PhotoSwipe - v4.4.1 - 2021-03-01
  * http://photoswipe.com
- * Copyright (c) 2020 Dmitry Semenov;
+ * Copyright (c) 2021 Dmitry Semenov;
  */
 
 (function (root, factory) { 
@@ -3126,7 +3126,7 @@ _registerModule('Tap', {
 				return;
 			}
 
-			if (!_moved && !_isMultitouch && !_numAnimations && self.container.contains(e.target)) {
+			if (!_moved && !_isMultitouch && !_numAnimations && (!_pointerEventEnabled || self.container.contains(e.target))) {
 				var p0 = releasePoint;
 				if (tapTimer) {
 					clearTimeout(tapTimer);
