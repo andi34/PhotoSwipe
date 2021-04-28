@@ -47,6 +47,7 @@ var _gestureStartTime,
 	_opacityChanged,
 	_bgOpacity,
 	_wasOverInitialZoom,
+	_target,
 	_isEqualPoints = function (p1, p2) {
 		return p1.x === p2.x && p1.y === p2.y;
 	},
@@ -288,6 +289,8 @@ var _gestureStartTime,
 
 		_shout('pointerDown');
 
+		_target = e.target || e.srcElement;
+
 		if (_pointerEventEnabled) {
 			var pointerIndex = framework.arraySearch(_currPointers, e.pointerId, 'id');
 			if (pointerIndex < 0) {
@@ -307,6 +310,7 @@ var _gestureStartTime,
 		if (!_isDragging || numPoints === 1) {
 			_isDragging = _isFirstMove = true;
 			framework.bind(window, _upMoveEvents, self);
+			// framework.bind(window, _downEvents, self); // I thought this might be needed to collapse caption but it made no difference.
 
 			_isZoomingIn = _wasOverInitialZoom = _opacityChanged = _verticalDragInitiated = _mainScrollShifted = _moved = _isMultitouch = _zoomStarted = false;
 
@@ -521,6 +525,29 @@ var _gestureStartTime,
 				return;
 			}
 
+			/* **************************************************************
+			 Commenting this section out because it does not work reliably
+			 especially when swiping down in an attempt to close the caption.
+			 I'd be grateful if anyone can figure out why and fix it.
+			*****************************************************************
+			// If dragging up on a collapsed long caption, expand the caption; 
+			// If dragging down on expanded long caption when at the top, collapse the caption.
+			if(_direction === 'v' && _options.allowLongCaptions) {
+				var targetCaption = _target.closest(".pswp__caption");
+				if(targetCaption) {
+					var toggleCaptionBtn = targetCaption.querySelector(".pswp__button--caption--ctrl");
+					var isExpanded = toggleCaptionBtn.classList.contains("pswp__button--caption--ctrl--collapse");
+					var isCollapsed = toggleCaptionBtn.classList.contains("pswp__button--caption--ctrl--expand");
+					var innerCaptionElement = targetCaption.querySelector(".pswp__caption__center");
+					if((delta.y < -DIRECTION_CHECK_OFFSET && isCollapsed) || 
+					   (delta.y > DIRECTION_CHECK_OFFSET && isExpanded && innerCaptionElement.scrollTop === 0)) {
+						self.ui.toggleCaption(toggleCaptionBtn);
+						return;
+					}
+				}
+			}
+			*/
+
 			if (_direction === 'v' && _options.closeOnVerticalDrag) {
 				if (!_canPan()) {
 					_currPanDist.y += delta.y;
@@ -640,6 +667,7 @@ var _gestureStartTime,
 		if (numPoints === 0) {
 			_isDragging = false;
 			framework.unbind(window, _upMoveEvents, self);
+			// framework.unbind(window, _downEvents, self); // I thought this might be needed to collapse caption but it made no difference.
 
 			_stopDragUpdateLoop();
 

@@ -38,6 +38,9 @@
 			_loadingIndicatorHidden,
 			_loadingIndicatorTimeout,
 			_galleryHasOneSlide,
+			_stylesheet,
+			_ruleExpanded,
+			_ruleCollapsed,
 			_options,
 			_defaultUIOptions = {
 				barsSize: {top: 44, bottom: 'auto'},
@@ -46,17 +49,52 @@
 				timeToIdleOutside: 1000,
 				loadingIndicatorDelay: 1000, // 2s
 
-				addCaptionHTMLFn: function (item, captionEl /*, isFake */) {
+				addCaptionHTMLFn: function (item, captionElement /*, isFake */) {
+					var captionCtrl = pswp.scrollWrap.querySelector('.pswp__button--caption--ctrl');
+					var captionElement = captionCtrl.parentNode;
+					var innerCaptionElement = captionElement.querySelector('.pswp__caption__center');
+					var imagePositionTop;
+					if (item.initialPosition) {
+						imagePositionTop = item.initialPosition.y;
+					} else {
+						imagePositionTop = 0;
+					}
+					var apparentImageHeight = Math.round(item.h * item.initialZoomLevel);
+					var gapTop = item.vGap;
+					var naturalCaptionHeight = innerCaptionElement.clientHeight;
+					var layoutData = _getLayoutData(captionElement);
+
 					if (!item.title) {
-						framework.resetEl(captionEl.firstChild);
+						innerCaptionElement.innerHTML = '';
 						return false;
 					}
-					captionEl.children[0].innerHTML = item.title;
+					innerCaptionElement.innerHTML = item.title;
+
+					// If allowLongCaptions is true, position caption just under picture and show "Expand" button if necessary
+					if (_options.allowLongCaptions) {
+						ui.resetCaption();
+						_setLayoutData(captionElement, imagePositionTop, apparentImageHeight, gapTop, naturalCaptionHeight);
+
+						// Show the 'expand' control only if caption extends out of view. Reset height first.
+						if (naturalCaptionHeight - 10 > layoutData.maxCollapsedCaptionHeight) {
+							captionCtrl.classList.add('pswp__button--caption--ctrl--expand');
+							captionCtrl.setAttribute('aria-controls', 'pswp__caption__center');
+
+							innerCaptionElement.setAttribute('aria-expanded', 'false');
+						} else {
+							_resetCaption(captionCtrl);
+						}
+
+						_ruleCollapsed.style.height = layoutData.maxCollapsedCaptionHeight + 'px';
+						innerCaptionElement.classList.add('collapsed');
+					}
+
 					return true;
 				},
 
 				closeEl: true,
 				captionEl: true,
+				allowLongCaptions: false,
 				fullscreenEl: true,
 				zoomEl: true,
 				shareEl: true,
@@ -98,6 +136,90 @@
 			_blockControlsTap,
 			_blockControlsTapTimeout;
 
+		// Write key layout dimensions as data attributes on the caption element
+		var _setLayoutData = function (captionElement, imagePositionTop, apparentImageHeight, gapTop, naturalCaptionHeight) {
+			captionElement.dataset.imagePositionTop = imagePositionTop;
+			captionElement.dataset.apparentImageHeight = apparentImageHeight;
+			captionElement.dataset.gapTop = gapTop;
+			captionElement.dataset.naturalCaptionHeight = naturalCaptionHeight;
+		};
+
+		var _getLayoutData = function (captionElement) {
+			var layoutData = {};
+
+			// Read data attributes on the caption element
+			layoutData.gapTop = parseInt(captionElement.dataset.gapTop, 10);
+			layoutData.imagePositionTop = parseInt(captionElement.dataset.imagePositionTop, 10);
+			layoutData.apparentImageHeight = parseInt(captionElement.dataset.apparentImageHeight, 10);
+			layoutData.naturalCaptionHeight = parseInt(captionElement.dataset.naturalCaptionHeight, 10);
+
+			var imageBottomEdgeFromTop = layoutData.imagePositionTop + layoutData.apparentImageHeight;
+			layoutData.maxCollapsedCaptionHeight = window.innerHeight - imageBottomEdgeFromTop;
+			layoutData.maxExpandedCaptionHeight = window.innerHeight - layoutData.gapTop;
+
+			return layoutData;
+		};
+
+		var _resetCaption = function (captionCtrl) {
+			if (!captionCtrl) {
+				captionCtrl = pswp.scrollWrap.querySelector('.pswp__button--caption--ctrl');
+			}
+
+			captionCtrl.classList.remove('pswp__button--caption--ctrl--expand');
+			captionCtrl.classList.remove('pswp__button--caption--ctrl--collapse');
+			captionCtrl.removeAttribute('aria-controls');
+
+			var innerCaptionElement = captionCtrl.parentNode.querySelector('.pswp__caption__center');
+			innerCaptionElement.removeAttribute('aria-expanded');
+			innerCaptionElement.classList.remove('expanded');
+			innerCaptionElement.classList.remove('collapsed');
+
+			_ruleExpanded.style.height = 'auto';
+			_ruleCollapsed.style.height = 'auto';
+		};
+
+		var _toggleCaption = function (captionCtrl) {
+			if (!captionCtrl) {
+				captionCtrl = pswp.scrollWrap.querySelector('.pswp__button--caption--ctrl');
+			}
+
+			var captionElement = captionCtrl.parentNode;
+			var innerCaptionElement = captionElement.querySelector('.pswp__caption__center');
+			var layoutData = _getLayoutData(captionElement);
+
+			if (captionCtrl.classList.contains('pswp__button--caption--ctrl--expand')) {
+				// Expand caption
+				if (layoutData.naturalCaptionHeight < layoutData.maxExpandedCaptionHeight) {
+					// It fits in space below top bar
+					_ruleExpanded.style.height = layoutData.naturalCaptionHeight + 'px';
+				} else {
+					// Caption is taller than the space available
+					_ruleExpanded.style.height = layoutData.maxExpandedCaptionHeight + 'px';
+					innerCaptionElement.style.overflowY = 'auto';
+				}
+
+				captionCtrl.classList.remove('pswp__button--caption--ctrl--expand');
+				captionCtrl.classList.add('pswp__button--caption--ctrl--collapse');
+				captionCtrl.setAttribute('title', 'Collapse caption');
+
+				innerCaptionElement.classList.remove('collapsed');
+				innerCaptionElement.classList.add('expanded');
+				innerCaptionElement.setAttribute('aria-expanded', 'true');
+			} else {
+				// Collapse caption
+				_ruleCollapsed.style.height = layoutData.maxCollapsedCaptionHeight + 'px';
+
+				captionCtrl.classList.add('pswp__button--caption--ctrl--expand');
+				captionCtrl.classList.remove('pswp__button--caption--ctrl--collapse');
+				captionCtrl.setAttribute('title', 'Expand caption');
+
+				innerCaptionElement.style.overflowY = 'hidden';
+				innerCaptionElement.classList.remove('expanded');
+				innerCaptionElement.classList.add('collapsed');
+				innerCaptionElement.setAttribute('aria-expanded', 'false');
+			}
+		};
+
 		var _onControlsTap = function (e) {
 				if (_blockControlsTap) {
 					return true;
@@ -118,9 +240,14 @@
 				for (var i = 0; i < _uiElements.length; i++) {
 					uiElement = _uiElements[i];
 					if (uiElement.onTap && clickedClass.indexOf('pswp__' + uiElement.name) > -1) {
-						uiElement.onTap();
+						uiElement.onTap(target);
 						found = true;
 					}
+				}
+
+				// Long captions will contain HTML so caption element will be an ancestor of target
+				if (target.closest('.pswp__caption__center')) {
+					found = true;
 				}
 
 				if (found) {
@@ -142,7 +269,9 @@
 				}
 			},
 			_fitControlsInViewport = function () {
-				return !pswp.likelyTouchDevice || _options.mouseUsed || screen.width > _options.fitControlsWidth;
+				return (
+					!pswp.likelyTouchDevice || _options.mouseUsed || screen.width > _options.fitControlsWidth || _options.allowLongCaptions
+				);
 			},
 			_togglePswpClass = function (el, cName, add) {
 				framework[(add ? 'add' : 'remove') + 'Class'](el, 'pswp__' + cName);
@@ -345,8 +474,8 @@
 				if (_fitControlsInViewport()) {
 					if (_options.captionEl && bars.bottom === 'auto') {
 						if (!_fakeCaptionContainer) {
-							_fakeCaptionContainer = framework.createEl('pswp__caption pswp__caption--fake');
-							_fakeCaptionContainer.appendChild(framework.createEl('pswp__caption__center'));
+							_fakeCaptionContainer = framework.createElement('pswp__caption pswp__caption--fake');
+							_fakeCaptionContainer.appendChild(framework.createElement('pswp__caption__center'));
 							_controls.insertBefore(_fakeCaptionContainer, _captionContainer);
 							framework.addClass(_controls, 'pswp__ui--fit');
 						}
@@ -382,9 +511,23 @@
 					});
 				}
 			},
+			_overrideOptionsIfAllowLongCaptionsTrue = function () {
+				if (_options.closeOnScroll) {
+					console.info('FYI: Resetting _options.closeOnScroll to false because _options.allowLongCaptions is true.');
+					_options.closeOnScroll = false;
+				}
+				if (_options.closeOnVerticalDrag) {
+					console.info('FYI: Resetting _options.closeOnVerticalDrag to false because _options.allowLongCaptions is true.');
+					_options.closeOnVerticalDrag = false;
+				}
+			},
 			_setupHidingControlsDuringGestures = function () {
 				// Hide controls on vertical drag
 				_listen('onVerticalDrag', function (now) {
+					if (_options.allowLongCaptions) {
+						return;
+					}
+
 					if (_controlsVisible && now < 0.95) {
 						ui.hideControls();
 					} else if (!_controlsVisible && now >= 0.95) {
@@ -410,6 +553,31 @@
 					}
 				});
 			};
+
+		// From https://davidwalsh.name/add-rules-stylesheets
+		var _createStylesheet = function () {
+			var style = document.createElement('style');
+			style.appendChild(document.createTextNode(''));
+			document.head.appendChild(style);
+			return style.sheet;
+		};
+
+		var _createStylesForLongCaptions = function () {
+			// Make a new stylesheet since there will be cross-site security issues if referencing a stylesheet on CDN
+			_stylesheet = _createStylesheet();
+
+			// From https://davidwalsh.name/add-rules-stylesheets
+			// We insert an empty rule just to create a new CSSStyleRule object. The second param is the index to
+			// insert at using the length property we effectively "append" the rule to the end of the sheet.
+			var ruleExpandedIndex = _stylesheet.insertRule('.pswp__caption__center.expanded {}', _stylesheet.cssRules.length);
+			var ruleCollapsedIndex = _stylesheet.insertRule('.pswp__caption__center.collapsed {}', _stylesheet.cssRules.length);
+			_ruleExpanded = _stylesheet.cssRules.item(ruleExpandedIndex);
+			_ruleCollapsed = _stylesheet.cssRules.item(ruleCollapsedIndex);
+
+			// While we are here, increase the width of the caption. It is very narrow which keeps it roughly centered
+			// if there are only a few words but it looks odd when the photo is wide and the caption is long.
+			_stylesheet.insertRule('.pswp__caption__center { width: 100%; max-width: 720px; }', _stylesheet.cssRules.length);
+		};
 
 		var _uiElements = [
 			{
@@ -494,6 +662,13 @@
 				}
 			},
 			{
+				name: 'button--caption--ctrl',
+				option: 'allowLongCaptions',
+				onTap: function (el) {
+					_toggleCaption(el);
+				}
+			},
+			{
 				name: 'preloader',
 				option: 'preloaderEl',
 				onInit: function (el) {
@@ -501,6 +676,19 @@
 				}
 			}
 		];
+
+		var _ensureCaptionCtrlExists = function () {
+			// Ensure that there is a button to toggle the caption
+			var captionElement = document.querySelector('.pswp__caption');
+			if (!captionElement.querySelector('.pswp__button--caption--ctrl')) {
+				var btn = document.createElement('button');
+				var innerCaptionElement = captionElement.querySelector('.pswp__caption__center');
+				btn.setAttribute('class', 'pswp__button pswp__button--caption--ctrl');
+				btn.setAttribute('id', 'pswp__button--caption--ctrl');
+				btn.setAttribute('title', 'Expand caption');
+				captionElement.insertBefore(btn, innerCaptionElement);
+			}
+		};
 
 		var _setupUIElements = function () {
 			var item, classAttr, uiElement;
@@ -542,6 +730,8 @@
 			if (topBar) {
 				loopThroughChildElements(topBar.children);
 			}
+
+			_ensureCaptionCtrlExists();
 		};
 
 		ui.init = function () {
@@ -557,6 +747,7 @@
 			// create local link
 			_listen = pswp.listen;
 
+			_overrideOptionsIfAllowLongCaptionsTrue();
 			_setupHidingControlsDuringGestures();
 
 			// update controls when slides change
@@ -665,6 +856,10 @@
 			_setupFullscreenAPI();
 
 			_setupLoadingIndicator();
+
+			if (_options.allowLongCaptions) {
+				_createStylesForLongCaptions();
+			}
 		};
 
 		ui.setIdle = function (isIdle) {
@@ -756,8 +951,10 @@
 					}
 				}
 			} else {
-				// tap anywhere (except buttons) to toggle visibility of controls
-				if (_options.tapToToggleControls) {
+				// Tap anywhere (except buttons and caption) to toggle visibility of controls
+				// Since the caption may now contain other elements, have to check if target is in caption
+				var targetCaption = target.closest('.pswp__caption');
+				if (_options.tapToToggleControls && !targetCaption) {
 					if (_controlsVisible) {
 						ui.hideControls();
 					} else {
@@ -859,6 +1056,14 @@
 			}
 
 			return api;
+		};
+
+		ui.toggleCaption = function (el) {
+			_toggleCaption(el);
+		};
+
+		ui.resetCaption = function (el) {
+			_resetCaption(el);
 		};
 	};
 	return PhotoSwipeUI_Default;

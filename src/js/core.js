@@ -19,8 +19,8 @@ var _options = {
 	mouseUsed: false,
 	loop: true,
 	pinchToClose: true,
-	closeOnScroll: true,
-	closeOnVerticalDrag: true,
+	closeOnScroll: true, // Will be overridden if allowLongCaptions is true
+	closeOnVerticalDrag: true, // Will be overridden if allowLongCaptions is true
 	verticalDragRange: 0.75,
 	hideAnimationDuration: 333,
 	showAnimationDuration: 333,
@@ -319,7 +319,12 @@ var _isOpen,
 			s.height = h + 'px';
 			s.left = item.initialPosition.x + 'px';
 			s.top = item.initialPosition.y + 'px';
+
+			item.zoom = zoomRatio;
+			item.apparentImageHeight = h;
+			item.imageFromTop = item.initialPosition;
 		};
+
 		_applyCurrentZoomPan = function () {
 			if (_currZoomElementStyle) {
 				var s = _currZoomElementStyle,
@@ -345,6 +350,21 @@ var _isOpen,
 				keydownAction = 'prev';
 			} else if (e.keyCode === 39) {
 				keydownAction = 'next';
+			} else if (e.keyCode === 13 || e.keyCode === 32) {
+				/* Enter or spacebar */
+				var btnCaptionCtrl = document.getElementById('pswp__button--caption--ctrl');
+				if (btnCaptionCtrl) {
+					if (
+						btnCaptionCtrl.classList.contains('pswp__button--caption--ctrl--expand') ||
+						btnCaptionCtrl.classList.contains('pswp__button--caption--ctrl--collapse')
+					) {
+						// Add tabindex to the caption div so that it can take focus and be controlled by up/down arrows
+						var innerCaptionElement = btnCaptionCtrl.parentNode.querySelector('.pswp__caption__center');
+						innerCaptionElement.setAttribute('tabindex', '-1');
+						innerCaptionElement.focus();
+						keydownAction = 'toggleCaption';
+					}
+				}
 			}
 		}
 
@@ -672,8 +692,8 @@ var publicMethods = {
 		framework.unbind(window, 'scroll', self);
 
 		_stopDragUpdateLoop();
-
 		_stopAllAnimations();
+		self.ui.resetCaption();
 
 		_listeners = {};
 	},
@@ -794,6 +814,10 @@ var publicMethods = {
 
 		self.invalidateCurrItems();
 		self.updateSize(true);
+	},
+
+	toggleCaption: function (el) {
+		self.ui.toggleCaption(el);
 	},
 
 	// update current zoom/pan objects

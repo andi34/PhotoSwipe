@@ -78,6 +78,7 @@
                 </button>
 
                 <div class="pswp__caption">
+                    <button class="pswp__button pswp__button--caption--ctrl" id="pswp__button--caption--ctrl" title="Expand caption"></button>
                     <div class="pswp__caption__center"></div>
                 </div>
 
@@ -100,7 +101,8 @@
                 {
                     src: 'https://farm7.staticflickr.com/6175/6176698785_7dee72237e_b.jpg',
                     w: 1024,
-                    h: 683
+                    h: 683,
+                    title: 'First caption. Image height and width defined. Images are displayed at their highest possible size and are not limited by the width of the column or wrapper. Each image is isolated from the other content and fits the viewport vertically, so that the user can focus on it. If an image is larger than the viewport, it can be zoomed (which most galleries are unable to do)'
                 },
                 // Auto sized images
                 {
@@ -111,7 +113,7 @@
                 {
                     src: 'https://farm6.staticflickr.com/5591/15008867125_b61960af01_h.jpg',
                     autoSize: true,
-                    title: 'Another example caption. Image height and width defined also via "autoSize: true"'
+                    title: 'Another example caption. Image height and width defined also via "autoSize: true". Images are displayed at their highest possible size and are not limited by the width of the column or wrapper. Each image is isolated from the other content and fits the viewport vertically, so that the user can focus on it. If an image is larger than the viewport, it can be zoomed (which most galleries are unable to do). Images are displayed at their highest possible size and are not limited by the width of the column or wrapper. Each image is isolated from the other content and fits the viewport vertically, so that the user can focus on it. If an image is larger than the viewport, it can be zoomed (which most galleries are unable to do). Images are displayed at their highest possible size and are not limited by the width of the column or wrapper. Each image is isolated from the other content and fits the viewport vertically, so that the user can focus on it. If an image is larger than the viewport, it can be zoomed (which most galleries are unable to do). Images are displayed at their highest possible size and are not limited by the width of the column or wrapper. Each image is isolated from the other content and fits the viewport vertically, so that the user can focus on it. If an image is larger than the viewport, it can be zoomed (which most galleries are unable to do)'
                 }
             ];
 
@@ -132,6 +134,7 @@
 
                 closeEl: true,
                 captionEl: true,
+                allowLongCaptions: true,
                 fullscreenEl: true,
                 zoomEl: true,
                 shareEl: true,
